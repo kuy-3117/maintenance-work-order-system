@@ -34,3 +34,12 @@ tests/
 ```
 
 不要在本模块复制设备主档或直接修改维修工单数据库。
+
+## 已实现的业务规则
+
+- 风险等级与工单优先级固定映射：`LOW → P4`、`MEDIUM → P3`、`HIGH → P2`、`CRITICAL → P1`。
+- `eventId` 是重试幂等键；重复投递返回第一次创建的同一 `Warning`，不会生成新的 `WarningId`。
+- 维修结论：`RECOVERED` 关闭预警；`PARTIALLY_RECOVERED` 保持处理中；`NOT_RECOVERED` 或无效结论标记为需关注（`FLAGGED`）。
+- 每条预警保存模型版本、健康分和疑似故障，便于后续模型评估与审计。
+
+实现位于 `src/domain` 和 `src/application`，仅使用内存仓储，生产环境可替换为持久化和消息适配器。
