@@ -43,3 +43,52 @@ tests/
 - 每条预警保存模型版本、健康分和疑似故障，便于后续模型评估与审计。
 
 实现位于 `src/domain` 和 `src/application`，仅使用内存仓储，生产环境可替换为持久化和消息适配器。
+
+## 当前任务进展（成员 B）
+
+| 板块 | 状态 | 说明 |
+| --- | --- | --- |
+| 领域模型与风险优先级 | 已完成 | `Warning`、状态、维修结果和 P1-P4 映射 |
+| 健康评估基线 | 已完成（规则版） | `RuleBasedHealthEvaluator` 根据温度、振动、电流计算健康分 |
+| 预警去重与风险更新 | 已完成（内存版） | 同设备同疑似故障的未关闭预警复用记录 |
+| 维修结论处理 | 已完成（应用层） | 支持关闭、处理中和需关注状态 |
+| C-INT-02/C-INT-04 HTTP 服务 | 待完成 | 需要补充 Web 框架、请求校验和错误响应 |
+| 数据库与消息发布 | 待完成 | 当前仍为内存仓储和事件字典 |
+| 身份、通知、可观测性 | 待联调 | 依赖成员 D 的统一服务 |
+| E2E-01 至 E2E-04 | 待联调 | 需要 A、C、D 提供运行中的服务 |
+
+## 本地调用示例
+
+当前模块是纯 Python 应用服务，调用方可先把模块目录加入 `PYTHONPATH`：
+
+```bash
+PYTHONPATH=apps/fault-warning python -c '
+from src.domain.evaluation import HealthInput, RuleBasedHealthEvaluator
+from src.application.service import WarningService
+
+assessment = RuleBasedHealthEvaluator().evaluate(
+    HealthInput("EQ-000001", temperature=100, vibration=8, current=15)
+)
+service = WarningService()
+warning = service.record_assessment(assessment,
+                                    event_id="123e4567-e89b-12d3-a456-426614174000")
+if warning:
+    event = service.warning_raised_event(warning.warning_id, "trace-local-001")
+    print(event)
+'
+```
+
+也可以在 Python 代码中直接调用：
+
+```python
+from src.application.service import WarningService
+from src.domain.evaluation import HealthInput, RuleBasedHealthEvaluator
+
+assessment = RuleBasedHealthEvaluator("health-model-1.0").evaluate(
+    HealthInput("EQ-000001", temperature=72, vibration=3, current=11)
+)
+service = WarningService()
+warning = service.record_assessment(assessment)
+```
+
+`record_assessment()` 返回 `None` 表示健康等级为 `LOW`，返回 `Warning` 表示已经产生或复用了预警。`warning_raised_event()` 返回符合 `WarningRaised` 包络的字典；实际 HTTP/消息发布适配器尚未接入。

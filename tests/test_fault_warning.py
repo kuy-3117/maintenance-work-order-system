@@ -14,6 +14,7 @@ sys.path.insert(0, str(PACKAGE))
 
 from src.application.service import WarningService  # noqa: E402
 from src.domain.models import MaintenanceResult, RiskLevel, WarningStatus  # noqa: E402
+from src.domain.evaluation import HealthInput, RuleBasedHealthEvaluator  # noqa: E402
 
 
 class WarningServiceTest(unittest.TestCase):
@@ -34,6 +35,16 @@ class WarningServiceTest(unittest.TestCase):
         service.apply_maintenance_conclusion(warning_id=warning.warning_id, root_cause="冷却故障",
                                               result=MaintenanceResult.RECOVERED, effective=True)
         self.assertEqual(warning.status, WarningStatus.CLOSED)
+
+    def test_rule_based_assessment_creates_warning(self) -> None:
+        assessment = RuleBasedHealthEvaluator().evaluate(
+            HealthInput("EQ-1", temperature=100, vibration=8, current=15)
+        )
+        self.assertEqual(assessment.risk_level, RiskLevel.CRITICAL)
+        service = WarningService()
+        warning = service.record_assessment(assessment)
+        self.assertIsNotNone(warning)
+        self.assertEqual(warning.health_score, assessment.health_score)
 
 
 if __name__ == "__main__":
