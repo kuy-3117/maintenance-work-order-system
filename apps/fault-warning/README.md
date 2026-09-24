@@ -91,4 +91,19 @@ service = WarningService()
 warning = service.record_assessment(assessment)
 ```
 
-`record_assessment()` 返回 `None` 表示健康等级为 `LOW`，返回 `Warning` 表示已经产生或复用了预警。`warning_raised_event()` 返回符合 `WarningRaised` 包络的字典；实际 HTTP/消息发布适配器尚未接入。
+`record_assessment()` 返回 `None` 表示健康等级为 `LOW`，返回 `Warning` 表示已经产生或复用了预警。`warning_raised_event()` 返回符合 `WarningRaised` 包络的字典。
+
+## 可执行 HTTP 服务
+
+本模块不依赖仓库外部父包，可直接启动内置标准库 HTTP 服务：
+
+```bash
+PYTHONPATH=apps/fault-warning B_SERVICE_PORT=8102 python -m src.http_server
+```
+
+- `GET /health`：健康检查；
+- `POST /api/v1/assessments`：提交 `equipmentId`、`temperatureC`、`vibrationMmS`、`currentA`，返回评估和预警事件；
+- `POST /api/v1/warnings`：兼容 C-INT-02 的预警入口；
+- `POST /api/v1/maintenance-conclusions`：提交包含 `warningId`、`rootCause`、`result`、`effective` 的维修结论。
+
+服务仅使用模块内 `src.*` 导入，便于测试、容器启动和后续替换数据库/消息适配器。
