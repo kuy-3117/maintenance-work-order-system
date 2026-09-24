@@ -66,6 +66,13 @@ class WarningService:
         except KeyError as exc:
             raise KeyError(f"预警不存在: {warning_id}") from exc
 
+    def snapshot(self) -> list[dict]:
+        """Return a JSON-friendly read-only view for the local dashboard."""
+        return [{"warningId": w.warning_id, "equipmentId": w.equipment_id,
+                 "riskLevel": w.risk_level.value, "status": w.status.value,
+                 "healthScore": w.health_score, "suspectedFault": w.suspected_fault}
+                for w in self._warnings.values()]
+
     def mark_processing(self, warning_id: str) -> Warning:
         warning = self.get(warning_id)
         if warning.status not in (WarningStatus.CLOSED,):

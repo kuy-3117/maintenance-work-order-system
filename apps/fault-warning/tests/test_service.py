@@ -61,5 +61,8 @@ def test_http_health_and_assessment_endpoints() -> None:
             "traceId": "test-trace"}), headers={"Content-Type": "application/json"})
         response = conn.getresponse(); body = json.loads(response.read())
         assert response.status == 201 and body["event"]["eventType"] == "WarningRaised"
+        conn.request("GET", "/")
+        response = conn.getresponse()
+        assert response.status == 200 and "成员 B" in response.read().decode()
     finally:
         server.shutdown(); thread.join(timeout=2); server.server_close()
