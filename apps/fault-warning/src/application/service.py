@@ -30,7 +30,7 @@ class WarningService:
             existing_id = self._events.get(event_id)
             if existing_id:
                 return self._warnings[existing_id]
-        warning_id = warning_id or f"WARN-{uuid4().hex[:24].upper()}"
+        warning_id = warning_id or f"WARN-{utc_now():%Y%m%d}-{uuid4().hex[:4].upper()}"
         existing = self._warnings.get(warning_id)
         if existing:
             return existing
@@ -93,10 +93,16 @@ class WarningService:
         重试时必须复用返回对象中的 eventId，不能重新生成事件编号。
         """
         warning = self.get(warning_id)
-        return {"eventId": warning._event_id or str(uuid4()), "eventType": "WarningRaised",
+        if warning._event_id is None:
+            warning._event_id = str(uuid4())
+        return {"eventId": warning._event_id, "eventType": "WarningRaised",
                 "schemaVersion": "1.0", "occurredAt": warning.warning_at.isoformat(),
                 "sourceMember": "MEMBER_B", "traceId": trace_id,
                 "payload": {"warningId": warning.warning_id, "equipmentId": warning.equipment_id,
                             "riskLevel": warning.risk_level.value, "healthScore": warning.health_score,
                             "suspectedFault": warning.suspected_fault,
-                            "warningAt": warning.warning_at.isoformat(), "modelVersion": warning.model_version}}
+                            "recommendedAction": "立即安排检修并复核关键指标",
+                            "warningAt": warning.warning_at.isoformat(), "modelVersion": warning.model_version,
+                            "metricSnapshot": {"sampleId": str(uuid4()), "measuredAt": warning.warning_at.isoformat(),
+                                                "temperatureC": 0, "vibrationMmS": 0, "currentA": 0,
+                                                "rotationalSpeedRpm": 0}}}
